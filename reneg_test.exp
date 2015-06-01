@@ -1,0 +1,33 @@
+#!/usr/bin/expect
+#
+# reneg_test.exp - Expect script to test for insecure renegotiation
+#
+# REQUIRES openssl-0.9.8k or older binary.
+#
+# 
+
+set openssl /usr/local/bin/openssl-0.9.8k
+set timeout 10
+
+if {[llength $argv] != 2} {
+    send_user "USAGE:\n\t$argv0 <host> <port>\n\n"; exit 2;
+}
+
+set host [lindex $argv 0]
+set port [lindex $argv 1]
+
+send_user "Testing $host:$port... "
+log_user 0
+spawn -noecho $openssl s_client -connect $host:$port
+
+expect "SSL-Session:"
+expect '---'
+send "GET / HTTP/1.1\r"
+send "R\r"
+expect {
+    "verify" { send_user "VULNERABLE to insecure renegotiation.\n"; exit 1; }
+    "error"  { send_user "likely not vulnerable.\n"; exit 0; }
+    timeout  { send_user "likely not vulnerable.\n"; exit 0; }
+}
+
+
